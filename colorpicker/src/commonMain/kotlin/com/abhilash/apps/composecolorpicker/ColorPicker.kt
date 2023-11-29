@@ -54,8 +54,9 @@ fun ColorPicker(
 
         SaturationValuePanel(
             hue = hsv.value.first,
-            modifier = Modifier,
-            height = 300.dp,
+            modifier = Modifier.width(300.dp),
+            cornerRadius = 12.dp,
+            aspectRatio = 1f,
             setSatVal = { sat, value ->
                 hsv.value = Triple(hsv.value.first, sat, value)
             }
@@ -65,7 +66,11 @@ fun ColorPicker(
 
         HueBar(
             modifier = Modifier.width(300.dp),
+            height = 50.dp,
+            shape = RoundedCornerShape(50),
             initColor = initialHSV[0],
+            selectorRadius = 25.dp,
+            selectorStroke = 3.dp,
             setColor = { hue ->
                 hsv.value = Triple(hue, hsv.value.second, hsv.value.third)
             }
@@ -268,15 +273,13 @@ private fun Modifier.emitDragGesture(
  * Saturation & Value Selector Panel
  * @see <a href="https://proandroiddev.com/color-picker-in-compose-f8c29744705">ComposeColorPicker Description</a>
  * @see <a href="https://github.com/V-Abhilash-1999/ComposeColorPicker">ComposeColorPicker Github</a>
- * @param height: The height of the Panel; if you use default modifier then width value will be ignored.
  * @param aspectRatio: height * aspectRatio => width
  */
 @Composable
 fun SatValPanel(
     hue: Float,
     modifier: Modifier = Modifier.fillMaxWidth(),
-    height: Dp = 300.dp,
-    aspectRatio: Float = 1f,
+    aspectRatio: Float? = 1f,
     cornerRadius: Dp = 32.dp,
     shape: Shape = RoundedCornerShape(cornerRadius),
     outerSelectorRadius: Dp = 8.dp,
@@ -304,11 +307,11 @@ fun SatValPanel(
     }
 
     CanvasComposable(
-        modifier = modifier
-            .aspectRatio(aspectRatio)
-            .height(height)
-            .emitDragGesture(interactionSource)
+        modifier = if (aspectRatio != null) {
+            modifier.aspectRatio(aspectRatio)
+        } else { modifier }
             .clip(shape)
+            .emitDragGesture(interactionSource)
     ) {
         // Draw Saturation Gradient Bitmap
         val satValSize = size
@@ -316,6 +319,9 @@ fun SatValPanel(
         val (satValPanel, _) = _satValPanel
 
         // Resizable Picker Position
+        if (maxWidth.value == 0f && maxHeight.value == 0f) {
+            pressOffsetX.value = satValSize.width
+        }
         if (maxWidth.value != 0f && maxWidth.value != satValSize.width) {  // When Resized
             pressOffsetX.value = pressOffsetX.value * satValSize.width / maxWidth.value
         }
@@ -377,22 +383,20 @@ fun SatValPanel(
  * Saturation & Value Selector Panel
  * @see <a href="https://proandroiddev.com/color-picker-in-compose-f8c29744705">ComposeColorPicker Description</a>
  * @see <a href="https://github.com/V-Abhilash-1999/ComposeColorPicker">ComposeColorPicker Github</a>
- * @param height: The height of the Panel; if you use default modifier then width value will be ignored.
  * @param aspectRatio: height * aspectRatio => width
  */
 @Composable
 fun SaturationValuePanel(
     hue: Float,
     modifier: Modifier = Modifier.fillMaxWidth(),
-    height: Dp = 300.dp,
-    aspectRatio: Float = 1f,
+    aspectRatio: Float? = 1f,
     cornerRadius: Dp = 32.dp,
     shape: Shape = RoundedCornerShape(cornerRadius),
     outerSelectorRadius: Dp = 8.dp,
     innerSelectorRadius: Dp = 2.dp,
     setSatVal: (Float, Float) -> Unit = { _, _ -> }
 ) {
-    SatValPanel(hue, modifier, height, aspectRatio,
+    SatValPanel(hue, modifier, aspectRatio,
         cornerRadius, shape, outerSelectorRadius, innerSelectorRadius, setSatVal)
 }
 
