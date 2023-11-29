@@ -42,6 +42,7 @@ kotlin {
                 api(compose.materialIconsExtended)
                 api(compose.material3)
                 implementation(libs.skiko.common)
+                implementation(projects.colorpicker)
             }
         }
         val commonTest by getting {
