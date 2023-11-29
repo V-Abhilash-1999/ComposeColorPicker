@@ -5,10 +5,10 @@ plugins {
 }
 
 android {
-    namespace = "io.github.irack.stonemanager.android"
+    namespace = "com.abhilash.apps.composecolorpicker.android"
     compileSdk = 34
     defaultConfig {
-        applicationId = "io.github.irack.stonemanager.android"
+        applicationId = "com.abhilash.apps.composecolorpicker.android"
         minSdk = 24
         targetSdk = 34
         versionCode = 1

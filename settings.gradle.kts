@@ -26,7 +26,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ComposeColorPicker"
+rootProject.name = "ComposeColorPickerProject"
 include(":android")
 include(":desktop")
 include(":common")
