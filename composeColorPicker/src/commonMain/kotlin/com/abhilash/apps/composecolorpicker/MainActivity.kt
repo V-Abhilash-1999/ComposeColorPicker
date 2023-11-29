@@ -55,44 +55,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            ComposeColorPickerTheme {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    val hsv = remember {
-                        val hsv = floatArrayOf(0f, 0f, 0f)
-                        AndroidColor.colorToHSV(Color.Blue.toArgb(), hsv)
 
-                        mutableStateOf(
-                            Triple(hsv[0], hsv[1], hsv[2])
-                        )
-                    }
-                    val backgroundColor = remember(hsv.value) {
-                        mutableStateOf(Color.hsv(hsv.value.first, hsv.value.second, hsv.value.third))
-                    }
-
-                    SatValPanel(hue = hsv.value.first) { sat, value ->
-                        hsv.value = Triple(hsv.value.first, sat, value)
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    HueBar { hue ->
-                        hsv.value = Triple(hue, hsv.value.second, hsv.value.third)
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .size(100.dp)
-                            .background(backgroundColor.value)
-                    )
-                }
-            }
         }
     }
 }
