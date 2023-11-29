@@ -4,7 +4,7 @@
 **_Contains Hue Panel_**
 ```Kotlin
 val initialHSV = argbToHsv(Color.Cyan.toArgb())
-val hsv = remember { 
+val hsv = rememberSaveable { 
     mutableStateOf(
         Triple(initialHSV[0], initialHSV[1], initialHSV[2])
     )
@@ -28,7 +28,7 @@ HueBar(
 **_Contains Saturation Value Panel_**
 ```Kotlin
 val initialHSV = argbToHsv(Color.Cyan.toArgb())
-val hsv = remember { 
+val hsv = rememberSaveable { 
     mutableStateOf(
         Triple(initialHSV[0], initialHSV[1], initialHSV[2])
     )
@@ -51,11 +51,14 @@ SaturationValuePanel(
 ###### **_Final Output_**
 ```Kotlin
 MaterialTheme {
-    ColorPicker(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    )
+    val initialHSV = argbToHsv(Color.Cyan.toArgb())
+    val hsv = rememberSaveable {
+        mutableStateOf(
+            Triple(initialHSV[0], initialHSV[1], initialHSV[2])
+        )
+    }
+    
+    ColorPicker(initialHSV = initialHSV, hsv = hsv)
 }
 ```
 
