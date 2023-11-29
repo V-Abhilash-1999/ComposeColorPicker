@@ -32,6 +32,7 @@ kotlin {
     sourceSets {
         val jvmMain by getting {
             dependencies {
+                implementation(projects.colorpicker)
                 implementation(projects.common)
                 implementation(compose.desktop.currentOs)
                 implementation("org.jetbrains.skiko:skiko-awt-runtime-$target:$version")

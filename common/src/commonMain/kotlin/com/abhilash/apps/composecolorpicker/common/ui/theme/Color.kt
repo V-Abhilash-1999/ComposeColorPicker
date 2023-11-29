@@ -1,4 +1,4 @@
-package com.abhilash.apps.composecolorpicker.ui.theme
+package com.abhilash.apps.composecolorpicker.common.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

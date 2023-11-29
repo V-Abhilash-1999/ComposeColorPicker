@@ -45,6 +45,7 @@ android {
 }
 
 dependencies {
+    implementation(projects.colorpicker)
     implementation(projects.common)
     implementation(libs.compose.ui)
     implementation(compose.ui)
