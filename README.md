@@ -63,6 +63,6 @@ MaterialTheme {
 ```
 
 <img src="img/ColorPicker(Android).gif?raw=true"></img>
-<img height="300" src="img/ColorPicker(iOS).png?raw=true"/></img>
-<img height="300" src="img/ColorPicker(Mac).png?raw=true"/></img>
-<img height="300" src="img/ColorPicker(Windows).png?raw=true"/></img>
+<img height="400" src="img/ColorPicker(iOS).png?raw=true"/></img>
+<img height="400" src="img/ColorPicker(Mac).png?raw=true"/></img>
+<img height="400" src="img/ColorPicker(Windows).png?raw=true"/></img>
