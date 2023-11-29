@@ -1,4 +1,4 @@
-package com.abhilash.apps.composecolorpicker
+package com.abhilash.apps.composecolorpicker.android
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -330,5 +330,13 @@ fun SatValPanel(
         )
 
 
+    }
+}
+
+@Preview
+@Composable
+fun ColorPickerPreview() {
+    MaterialTheme {
+        ColorPicker()
     }
 }
