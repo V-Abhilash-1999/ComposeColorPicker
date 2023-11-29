@@ -51,16 +51,6 @@ import kotlinx.coroutines.launch
 import android.graphics.Color as AndroidColor
 
 
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-
-        }
-    }
-}
-
-
 @Composable
 fun HueBar(
     setColor: (Float) -> Unit
