@@ -1,16 +1,12 @@
 package com.abhilash.apps.composecolorpicker.android
 
 import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.ComposeShader
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.RectF
 import android.graphics.Shader
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,19 +14,15 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -45,10 +37,55 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toRect
-import com.abhilash.apps.composecolorpicker.ui.theme.ComposeColorPickerTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import android.graphics.Color as AndroidColor
+
+
+/**
+ * Color Picker Example
+ */
+@Composable
+fun ColorPicker(
+    modifier: Modifier = Modifier.fillMaxSize(),
+    verticalArrangement: Arrangement.HorizontalOrVertical = Arrangement.Center,
+    horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally
+) {
+    Column(modifier, verticalArrangement, horizontalAlignment) {
+        val initialHSV = argbToHsv(Color.Cyan.toArgb())
+        val hsv = rememberSaveable {
+            mutableStateOf(
+                Triple(initialHSV[0], initialHSV[1], initialHSV[2])
+            )
+        }
+        val backgroundColor = remember(hsv.value) {
+            mutableStateOf(Color.hsv(hsv.value.first, hsv.value.second, hsv.value.third))
+        }
+
+        SatValPanel(
+            setSatVal = { sat, value ->
+                hsv.value = Triple(hsv.value.first, sat, value)
+            }
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        HueBar(
+            setColor = { hue ->
+                hsv.value = Triple(hue, hsv.value.second, hsv.value.third)
+            }
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .background(backgroundColor.value)
+        )
+    }
+}
 
 
 @Composable
@@ -125,6 +162,62 @@ fun HueBar(
 
     }
 }
+
+fun hsvToArgbList(hue: Float, saturation: Float, value: Float, alpha: Float = 1f): IntArray {
+    val c = value * saturation
+    val x = c * (1 - abs((hue / 60) % 2 - 1))
+    val m = value - c
+
+    val (r, g, b) = when {
+        0 <= hue && hue < 60 -> Triple(c, x, 0f)
+        60 <= hue && hue < 120 -> Triple(x, c, 0f)
+        120 <= hue && hue < 180 -> Triple(0f, c, x)
+        180 <= hue && hue < 240 -> Triple(0f, x, c)
+        240 <= hue && hue < 300 -> Triple(x, 0f, c)
+        else -> Triple(c, 0f, x)
+    }
+
+    val red = ((r + m) * 255).toInt()
+    val green = ((g + m) * 255).toInt()
+    val blue = ((b + m) * 255).toInt()
+
+    val alphaInt = (alpha * 255).toInt()
+
+    return intArrayOf(alphaInt, red, green, blue)
+}
+
+fun hsvToArgb(hue: Float, saturation: Float, value: Float, alpha: Float = 1f): Int {
+    val color = hsvToArgbList(hue, saturation, value, alpha)
+    return Color(color[1], color[2], color[3], color[0]).toArgb()
+}
+
+fun argbToHsv(argb: Int): FloatArray {
+    val alpha = (argb ushr 24) and 0xFF
+    val red = (argb ushr 16) and 0xFF
+    val green = (argb ushr 8) and 0xFF
+    val blue = argb and 0xFF
+
+    val maxColor = maxOf(red, green, blue).toFloat()
+    val minColor = minOf(red, green, blue).toFloat()
+    val deltaColor = maxColor - minColor
+
+    var hue = 0f
+    val saturation = if (maxColor != 0f) deltaColor / maxColor else 0f
+    val value = maxColor / 255f
+
+    if (deltaColor != 0f) {
+        hue = when (maxColor) {
+            red.toFloat() -> (green - blue) / deltaColor + (if (green < blue) 6 else 0)
+            green.toFloat() -> (blue - red) / deltaColor + 2
+            blue.toFloat() -> (red - green) / deltaColor + 4
+            else -> hue
+        }
+        hue *= 60
+    }
+
+    return floatArrayOf(hue, saturation, value, alpha / 255f)
+}
+
 
 fun CoroutineScope.collectForPress(
     interactionSource: InteractionSource,
@@ -283,14 +376,5 @@ fun SatValPanel(
         )
 
 
-    }
-}
-
-
-@Preview
-@Composable
-fun ColorPickerPreview() {
-    MaterialTheme {
-        ColorPicker()
     }
 }
