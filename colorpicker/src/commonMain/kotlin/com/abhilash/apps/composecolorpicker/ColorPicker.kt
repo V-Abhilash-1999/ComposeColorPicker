@@ -1,13 +1,5 @@
-package com.abhilash.apps.composecolorpicker.android
+package com.abhilash.apps.composecolorpicker
 
-import android.graphics.Bitmap
-import android.graphics.ComposeShader
-import android.graphics.LinearGradient
-import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.RectF
-import android.graphics.Shader
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -15,8 +7,6 @@ import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -29,18 +19,17 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.toRect
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
-import android.graphics.Color as AndroidColor
+import androidx.compose.foundation.Canvas as CanvasComposable
 
 
 /**
@@ -54,7 +43,7 @@ fun ColorPicker(
 ) {
     Column(modifier, verticalArrangement, horizontalAlignment) {
         val initialHSV = argbToHsv(Color.Cyan.toArgb())
-        val hsv = rememberSaveable {
+        val hsv = remember {
             mutableStateOf(
                 Triple(initialHSV[0], initialHSV[1], initialHSV[2])
             )
@@ -63,7 +52,10 @@ fun ColorPicker(
             mutableStateOf(Color.hsv(hsv.value.first, hsv.value.second, hsv.value.third))
         }
 
-        SatValPanel(
+        SaturationValuePanel(
+            hue = hsv.value.first,
+            modifier = Modifier,
+            height = 300.dp,
             setSatVal = { sat, value ->
                 hsv.value = Triple(hsv.value.first, sat, value)
             }
@@ -72,6 +64,8 @@ fun ColorPicker(
         Spacer(modifier = Modifier.height(32.dp))
 
         HueBar(
+            modifier = Modifier.width(300.dp),
+            initColor = initialHSV[0],
             setColor = { hue ->
                 hsv.value = Triple(hue, hsv.value.second, hsv.value.third)
             }
@@ -88,80 +82,104 @@ fun ColorPicker(
 }
 
 
+
+/**
+ * Hue Selector Bar
+ * @see <a href="https://proandroiddev.com/color-picker-in-compose-f8c29744705">ComposeColorPicker Description</a>
+ * @see <a href="https://github.com/V-Abhilash-1999/ComposeColorPicker">ComposeColorPicker Github</a>
+ */
 @Composable
 fun HueBar(
-    setColor: (Float) -> Unit
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    height: Dp = 80.dp,
+    shape: Shape = RoundedCornerShape(32),
+    selectorRadius: Dp = height / 4,
+    selectorStroke: Dp = 10.dp,
+    initColor: Float = 0f,
+    setColor: (Float) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val interactionSource = remember {
         MutableInteractionSource()
     }
-    val pressOffset = remember {
-        mutableStateOf(Offset.Zero)
+    val pressOffset = rememberSaveable {
+        mutableStateOf(0f)
     }
-
-    Canvas(
-        modifier = Modifier
-            .height(40.dp)
-            .width(300.dp)
-            .clip(RoundedCornerShape(50))
+    val maxWidth = rememberSaveable {
+        mutableStateOf(0)
+    }
+    CanvasComposable(
+        modifier = modifier
+            .height(height)
+            .clip(shape)
             .emitDragGesture(interactionSource)
     ) {
+        // Draw Hue Gradient Bitmap
         val drawScopeSize = size
-        val bitmap = Bitmap.createBitmap(size.width.toInt(), size.height.toInt(), Bitmap.Config.ARGB_8888)
-        val hueCanvas = Canvas(bitmap)
+        val (bitmap, hueCanvas, _huePanel) = initBitmapCanvasPanel()
+        val (huePanel, panelWidth) = _huePanel
 
-        val huePanel = RectF(0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat())
-
-        val hueColors = IntArray((huePanel.width()).toInt())
-        var hue = 0f
-        for (i in hueColors.indices) {
-            hueColors[i] = AndroidColor.HSVToColor(floatArrayOf(hue, 1f, 1f))
-            hue += 360f / hueColors.size
+        // Resizable Picker Position
+        if (maxWidth.value != 0 && maxWidth.value != panelWidth) {  // When Resized
+            pressOffset.value = pressOffset.value * panelWidth.toFloat() / maxWidth.value.toFloat()
+        }
+        maxWidth.value = panelWidth
+        if (pressOffset.value == 0f) {
+            pressOffset.value = initColor / 360f * maxWidth.value.toFloat()
         }
 
-        val linePaint = Paint()
-        linePaint.strokeWidth = 0F
-        for (i in hueColors.indices) {
-            linePaint.color = hueColors[i]
-            hueCanvas.drawLine(i.toFloat(), 0F, i.toFloat(), huePanel.bottom, linePaint)
-        }
+        // Split these colors across the width of the huePanel
+        val hueColors = getHueColorArray(panelWidth)
 
+        // Draw each line of color in canvas
+        drawColorLines(hueCanvas, huePanel, hueColors)
+
+        // Draw into compose canvas
         drawBitmap(
             bitmap = bitmap,
             panel = huePanel
         )
 
-        fun pointToHue(pointX: Float): Float {
-            val width = huePanel.width()
-            val x = when {
-                pointX < huePanel.left -> 0F
-                pointX > huePanel.right -> width
-                else -> pointX - huePanel.left
-            }
-            return x * 360f / width
-        }
+        // Position Calculation
+        val pointToHue = getHuePositioningFuntion(huePanel)
 
-
+        // OnClick
         scope.collectForPress(interactionSource) { pressPosition ->
             val pressPos = pressPosition.x.coerceIn(0f..drawScopeSize.width)
-            pressOffset.value = Offset(pressPos, 0f)
+            pressOffset.value = pressPos
             val selectedHue = pointToHue(pressPos)
             setColor(selectedHue)
         }
 
-
+        // Draw Selection Slider
         drawCircle(
             Color.White,
-            radius = size.height/2,
-            center = Offset(pressOffset.value.x, size.height/2),
+            radius = selectorRadius.toPx(),
+            center = Offset(pressOffset.value, size.height/2),
             style = Stroke(
-                width = 2.dp.toPx()
+                width = selectorStroke.toPx()
             )
         )
-
     }
 }
+
+expect fun DrawScope.initBitmapCanvasPanel(): Triple<Any, Any, Pair<Any, Int>>
+
+private fun getHueColorArray(length: Int): IntArray {
+    val hueColors = IntArray(length)
+    var hue = 0f
+    for (i in hueColors.indices) {
+        hueColors[i] = hsvToArgb(hue, 1f, 1f)
+        hue += 360f / hueColors.size
+    }
+    return hueColors
+}
+
+expect fun drawColorLines(hueCanvas: Any, huePanel: Any, hueColors: IntArray)
+
+expect fun DrawScope.drawBitmap(bitmap: Any, panel: Any)
+
+expect fun getHuePositioningFuntion(huePanel: Any): (Float) -> Float
 
 fun hsvToArgbList(hue: Float, saturation: Float, value: Float, alpha: Float = 1f): IntArray {
     val c = value * saturation
@@ -218,7 +236,6 @@ fun argbToHsv(argb: Int): FloatArray {
     return floatArrayOf(hue, saturation, value, alpha / 255f)
 }
 
-
 fun CoroutineScope.collectForPress(
     interactionSource: InteractionSource,
     setOffset: (Offset) -> Unit
@@ -232,42 +249,39 @@ fun CoroutineScope.collectForPress(
     }
 }
 
-
-
 private fun Modifier.emitDragGesture(
     interactionSource: MutableInteractionSource
 ): Modifier = composed {
     val scope = rememberCoroutineScope()
-
     pointerInput(Unit) {
         detectDragGestures { input, _ ->
             scope.launch {
                 interactionSource.emit(PressInteraction.Press(input.position))
             }
         }
-    }.clickable(interactionSource, null) {
-
-    }
+    }.clickable(interactionSource, null) {}
 }
 
-private fun DrawScope.drawBitmap(
-    bitmap: Bitmap,
-    panel: RectF
-) {
-    drawIntoCanvas {
-        it.nativeCanvas.drawBitmap(
-            bitmap,
-            null,
-            panel.toRect(),
-            null
-        )
-    }
-}
 
+
+/**
+ * Saturation & Value Selector Panel
+ * @see <a href="https://proandroiddev.com/color-picker-in-compose-f8c29744705">ComposeColorPicker Description</a>
+ * @see <a href="https://github.com/V-Abhilash-1999/ComposeColorPicker">ComposeColorPicker Github</a>
+ * @param height: The height of the Panel; if you use default modifier then width value will be ignored.
+ * @param aspectRatio: height * aspectRatio => width
+ */
 @Composable
 fun SatValPanel(
     hue: Float,
-    setSatVal: (Float, Float) -> Unit
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    height: Dp = 300.dp,
+    aspectRatio: Float = 1f,
+    cornerRadius: Dp = 32.dp,
+    shape: Shape = RoundedCornerShape(cornerRadius),
+    outerSelectorRadius: Dp = 8.dp,
+    innerSelectorRadius: Dp = 2.dp,
+    setSatVal: (Float, Float) -> Unit = { _, _ -> }
 ) {
     val interactionSource = remember {
         MutableInteractionSource()
@@ -276,94 +290,76 @@ fun SatValPanel(
     var sat: Float
     var value: Float
 
-    val pressOffset = remember {
-        mutableStateOf(Offset.Zero)
+    val pressOffsetX = rememberSaveable {
+        mutableStateOf(0f)
+    }
+    val pressOffsetY = rememberSaveable {
+        mutableStateOf(0f)
+    }
+    val maxWidth = rememberSaveable {
+        mutableStateOf(0f)
+    }
+    val maxHeight = rememberSaveable {
+        mutableStateOf(0f)
     }
 
-    Canvas(
-        modifier = Modifier
-            .size(300.dp)
+    CanvasComposable(
+        modifier = modifier
+            .aspectRatio(aspectRatio)
+            .height(height)
             .emitDragGesture(interactionSource)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(shape)
     ) {
-        val cornerRadius = 12.dp.toPx()
+        // Draw Saturation Gradient Bitmap
         val satValSize = size
+        val (bitmap, canvas, _satValPanel) = initBitmapCanvasPanel()
+        val (satValPanel, _) = _satValPanel
 
-        val bitmap = Bitmap.createBitmap(size.width.toInt(), size.height.toInt(), Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val satValPanel = RectF(0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat())
+        // Resizable Picker Position
+        if (maxWidth.value != 0f && maxWidth.value != satValSize.width) {  // When Resized
+            pressOffsetX.value = pressOffsetX.value * satValSize.width / maxWidth.value
+        }
+        maxWidth.value = satValSize.width
+        if (maxHeight.value != 0f && maxHeight.value != satValSize.height) {  // When Resized
+            pressOffsetY.value = pressOffsetY.value * satValSize.height / maxHeight.value
+        }
+        maxHeight.value = satValSize.height
 
-        val rgb = AndroidColor.HSVToColor(floatArrayOf(hue, 1f, 1f))
+        // Create saturation gradient from top-left to top-right and value gradient from top-left to bottom-left
+        val rgb = hsvToArgb(hue, 1f, 1f)
+        val (satShader, valShader) = getSaturationValueShader(rgb, satValPanel)
 
-        val satShader =  LinearGradient(
-            satValPanel.left, satValPanel.top, satValPanel.right, satValPanel.top,
-            -0x1, rgb, Shader.TileMode.CLAMP
-        )
-        val valShader = LinearGradient(
-            satValPanel.left, satValPanel.top, satValPanel.left, satValPanel.bottom,
-            -0x1, -0x1000000, Shader.TileMode.CLAMP
-        )
+        // Draw Panel
+        drawRoundRect(canvas, satValPanel, cornerRadius.toPx(), satShader, valShader)
 
-        canvas.drawRoundRect(
-            satValPanel,
-            cornerRadius,
-            cornerRadius,
-            Paint().apply {
-                shader = ComposeShader(
-                    valShader,
-                    satShader,
-                    PorterDuff.Mode.MULTIPLY
-                )
-            }
-        )
-
+        // Draw into compose canvas
         drawBitmap(
             bitmap = bitmap,
             panel = satValPanel
         )
 
+        // Position Calculation
+        val pointToSatVal = getSatValPositioningFuntion(satValPanel)
 
-        fun pointToSatVal(pointX: Float, pointY: Float): Pair<Float, Float> {
-            val width = satValPanel.width()
-            val height = satValPanel.height()
-
-            val x = when {
-                pointX < satValPanel.left -> 0f
-                pointX > satValPanel.right -> width
-                else -> pointX - satValPanel.left
-            }
-
-            val y = when {
-                pointY < satValPanel.top -> 0f
-                pointY > satValPanel.bottom -> height
-                else -> pointY - satValPanel.top
-            }
-
-            val satPoint = 1f / width * x
-            val valuePoint = 1f - 1f / height * y
-
-            return satPoint to valuePoint
-        }
-
+        // OnClick
         scope.collectForPress(interactionSource) { pressPosition ->
-            val pressPositionOffset = Offset(
-                pressPosition.x.coerceIn(0f..satValSize.width),
-                pressPosition.y.coerceIn(0f..satValSize.height)
-            )
+            val pressPositionX = pressPosition.x.coerceIn(0f..satValSize.width)
+            val pressPositionY = pressPosition.y.coerceIn(0f..satValSize.height)
 
-
-            pressOffset.value = pressPositionOffset
-            val (satPoint, valuePoint) = pointToSatVal(pressPositionOffset.x, pressPositionOffset.y)
+            pressOffsetX.value = pressPositionX
+            pressOffsetY.value = pressPositionY
+            val (satPoint, valuePoint) = pointToSatVal(pressPositionX, pressPositionY)
             sat = satPoint
             value = valuePoint
 
             setSatVal(sat, value)
         }
 
+        // Draw Selection Slider
         drawCircle(
             color = Color.White,
-            radius = 8.dp.toPx(),
-            center = pressOffset.value,
+            radius = outerSelectorRadius.toPx(),
+            center = Offset(pressOffsetX.value, pressOffsetY.value),
             style = Stroke(
                 width = 2.dp.toPx()
             )
@@ -371,10 +367,40 @@ fun SatValPanel(
 
         drawCircle(
             color = Color.White,
-            radius = 2.dp.toPx(),
-            center = pressOffset.value,
+            radius = innerSelectorRadius.toPx(),
+            center = Offset(pressOffsetX.value, pressOffsetY.value)
         )
-
-
     }
 }
+
+/**
+ * Saturation & Value Selector Panel
+ * @see <a href="https://proandroiddev.com/color-picker-in-compose-f8c29744705">ComposeColorPicker Description</a>
+ * @see <a href="https://github.com/V-Abhilash-1999/ComposeColorPicker">ComposeColorPicker Github</a>
+ * @param height: The height of the Panel; if you use default modifier then width value will be ignored.
+ * @param aspectRatio: height * aspectRatio => width
+ */
+@Composable
+fun SaturationValuePanel(
+    hue: Float,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    height: Dp = 300.dp,
+    aspectRatio: Float = 1f,
+    cornerRadius: Dp = 32.dp,
+    shape: Shape = RoundedCornerShape(cornerRadius),
+    outerSelectorRadius: Dp = 8.dp,
+    innerSelectorRadius: Dp = 2.dp,
+    setSatVal: (Float, Float) -> Unit = { _, _ -> }
+) {
+    SatValPanel(hue, modifier, height, aspectRatio,
+        cornerRadius, shape, outerSelectorRadius, innerSelectorRadius, setSatVal)
+}
+
+expect fun getSaturationValueShader(rgb: Int, satValPanel: Any): Pair<Any, Any>
+
+expect fun drawRoundRect(
+    canvas: Any, satValPanel: Any, cornerRadius: Float,
+    satShader: Any, valShader: Any
+)
+
+expect fun getSatValPositioningFuntion(satValPanel: Any): (Float, Float) -> Pair<Float, Float>
