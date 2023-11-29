@@ -1,3 +1,5 @@
+@file:Suppress("NAME_SHADOWING")
+
 package com.abhilash.apps.composecolorpicker
 
 import androidx.compose.foundation.background
