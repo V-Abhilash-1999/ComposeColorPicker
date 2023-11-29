@@ -59,9 +59,7 @@ fun ColorPicker(
     },
     hueBar: @Composable (hsv: MutableState<Triple<Float, Float, Float>>, initColor: Float) -> Unit = { hsv, initColor ->
         HueBar(
-            modifier = Modifier
-                .width(300.dp)
-                .padding(),
+            modifier = Modifier.width(300.dp),
             height = 50.dp,
             shape = RoundedCornerShape(50),
             initColor = initColor,
@@ -117,7 +115,8 @@ fun ColorPicker(
 fun HueBar(
     modifier: Modifier = Modifier.fillMaxWidth(),
     height: Dp = 80.dp,
-    shape: Shape = RoundedCornerShape(32),
+    cornerRadius: Dp = 32.dp,
+    shape: Shape = RoundedCornerShape(cornerRadius),
     selectorRadius: Dp = height / 4,
     selectorStroke: Dp = 10.dp,
     initColor: Float = 0f,
