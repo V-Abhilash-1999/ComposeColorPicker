@@ -8,10 +8,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,21 +35,16 @@ import androidx.compose.foundation.Canvas as CanvasComposable
  */
 @Composable
 fun ColorPicker(
-    modifier: Modifier = Modifier.fillMaxSize(),
-    verticalArrangement: Arrangement.HorizontalOrVertical = Arrangement.Center,
-    horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally
-) {
-    Column(modifier, verticalArrangement, horizontalAlignment) {
-        val initialHSV = argbToHsv(Color.Cyan.toArgb())
-        val hsv = remember {
-            mutableStateOf(
-                Triple(initialHSV[0], initialHSV[1], initialHSV[2])
-            )
-        }
-        val backgroundColor = remember(hsv.value) {
-            mutableStateOf(Color.hsv(hsv.value.first, hsv.value.second, hsv.value.third))
-        }
-
+    modifier: Modifier = Modifier.fillMaxSize().padding(10.dp),
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(36.dp, Alignment.CenterVertically),
+    horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
+    initialHSV: FloatArray = argbToHsv(Color.Cyan.toArgb()),
+    hsv: MutableState<Triple<Float, Float, Float>> = rememberSaveable {
+        mutableStateOf(
+            Triple(initialHSV[0], initialHSV[1], initialHSV[2])
+        )
+    },
+    saturationValuePanel: @Composable (hsv: MutableState<Triple<Float, Float, Float>>) -> Unit = { hsv ->
         SaturationValuePanel(
             hue = hsv.value.first,
             modifier = Modifier.width(300.dp),
@@ -61,29 +54,54 @@ fun ColorPicker(
                 hsv.value = Triple(hsv.value.first, sat, value)
             }
         )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
+    },
+    hueBar: @Composable (hsv: MutableState<Triple<Float, Float, Float>>, initColor: Float) -> Unit = { hsv, initColor ->
         HueBar(
-            modifier = Modifier.width(300.dp),
+            modifier = Modifier
+                .width(300.dp)
+                .padding(),
             height = 50.dp,
             shape = RoundedCornerShape(50),
-            initColor = initialHSV[0],
+            initColor = initColor,
             selectorRadius = 25.dp,
             selectorStroke = 3.dp,
             setColor = { hue ->
                 hsv.value = Triple(hue, hsv.value.second, hsv.value.third)
             }
         )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
+    },
+    selectionView: @Composable (backgroundColor: Color) -> Unit = { backgroundColor ->
         Box(
             modifier = Modifier
                 .size(100.dp)
-                .background(backgroundColor.value)
+                .background(backgroundColor)
         )
+    },
+    container: @Composable (
+        modifier: Modifier,
+        verticalArrangement: Arrangement.Vertical,
+        horizontalAlignment: Alignment.Horizontal,
+        initialHSV: FloatArray,
+        hsv: MutableState<Triple<Float, Float, Float>>,
+        saturationValuePanel: @Composable (hsv: MutableState<Triple<Float, Float, Float>>) -> Unit,
+        hueBar: @Composable (hsv: MutableState<Triple<Float, Float, Float>>, initColor: Float) -> Unit,
+        selectionView: @Composable (backgroundColor: Color) -> Unit
+    ) -> Unit = { modifier, verticalArrangement, horizontalAlignment, initialHSV, hsv, saturationValuePanel, hueBar, selectionView ->
+        val scrollState = rememberForeverScrollState("ColorPicker")
+        Column(modifier.verticalScroll(scrollState), verticalArrangement, horizontalAlignment) {
+            val backgroundColor = remember(hsv.value) {
+                mutableStateOf(Color.hsv(hsv.value.first, hsv.value.second, hsv.value.third))
+            }
+
+            saturationValuePanel(hsv)
+
+            hueBar(hsv, initialHSV[0])
+
+            selectionView(backgroundColor.value)
+        }
     }
+) {
+    container(modifier, verticalArrangement, horizontalAlignment, initialHSV, hsv, saturationValuePanel, hueBar, selectionView)
 }
 
 
